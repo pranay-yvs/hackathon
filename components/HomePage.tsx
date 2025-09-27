@@ -1,13 +1,16 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { LanguageSelector } from './LanguageSelector';
-import type { Language } from '../types';
+import type { Language, HistoryEntry } from '../types';
+import { HistoryList } from './HistoryList';
 
 interface HomePageProps {
-  onAnalyze: (imageFile: File) => void;
+  onAnalyze: (imageFile: File, imageDataUrl: string) => void;
   isLoading: boolean;
   error: string | null;
   selectedLanguage: Language;
   setSelectedLanguage: (language: Language) => void;
+  history: HistoryEntry[];
+  onClearHistory: () => void;
 }
 
 const CameraIcon = () => (
@@ -24,7 +27,7 @@ const UploadIcon = () => (
 );
 
 
-export const HomePage: React.FC<HomePageProps> = ({ onAnalyze, isLoading, error, selectedLanguage, setSelectedLanguage }) => {
+export const HomePage: React.FC<HomePageProps> = ({ onAnalyze, isLoading, error, selectedLanguage, setSelectedLanguage, history, onClearHistory }) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -43,8 +46,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onAnalyze, isLoading, error,
   };
 
   const handleAnalyzeClick = () => {
-    if (file) {
-      onAnalyze(file);
+    if (file && preview) {
+      onAnalyze(file, preview);
     }
   };
   
@@ -57,52 +60,55 @@ export const HomePage: React.FC<HomePageProps> = ({ onAnalyze, isLoading, error,
   }, []);
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-2xl shadow-lg w-full transition-all duration-300 ease-in-out">
-      <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-700 mb-2">Get Started</h2>
-        <p className="text-gray-500 mb-6">Use your device's camera or webcam to take a picture of a leaf, or upload an image to check its health.</p>
-        <div className="mb-4">
-          <LanguageSelector selectedLanguage={selectedLanguage} onSelectLanguage={setSelectedLanguage} />
-        </div>
-      </div>
-      
-      <div 
-        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50 cursor-pointer hover:bg-gray-100 hover:border-green-400 transition-colors"
-        onClick={triggerFileUpload}
-      >
-        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-        <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleFileChange} className="hidden" />
-        
-        {preview ? (
-          <img src={preview} alt="Leaf preview" className="mx-auto max-h-60 rounded-lg shadow-md" />
-        ) : (
-          <div className="flex flex-col items-center text-gray-500">
-            <UploadIcon />
-            <p>Click here to upload an image</p>
-             <p className="text-sm">or</p>
+    <>
+      <div className="bg-white p-6 md:p-8 rounded-2xl shadow-lg w-full transition-all duration-300 ease-in-out">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-gray-700 mb-2">Get Started</h2>
+          <p className="text-gray-500 mb-6">Use your device's camera or webcam to take a picture of a leaf, or upload an image to check its health.</p>
+          <div className="mb-4">
+            <LanguageSelector selectedLanguage={selectedLanguage} onSelectLanguage={setSelectedLanguage} />
           </div>
+        </div>
+        
+        <div 
+          className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50 cursor-pointer hover:bg-gray-100 hover:border-green-400 transition-colors"
+          onClick={triggerFileUpload}
+        >
+          <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+          <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleFileChange} className="hidden" />
+          
+          {preview ? (
+            <img src={preview} alt="Leaf preview" className="mx-auto max-h-60 rounded-lg shadow-md" />
+          ) : (
+            <div className="flex flex-col items-center text-gray-500">
+              <UploadIcon />
+              <p>Click here to upload an image</p>
+               <p className="text-sm">or</p>
+            </div>
+          )}
+        </div>
+        
+         <button
+            onClick={triggerCamera}
+            className="w-full mt-4 flex items-center justify-center bg-green-100 text-green-800 font-semibold py-3 px-4 rounded-lg hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            <CameraIcon />
+            Use Camera / Webcam
+          </button>
+
+        {error && <p className="text-red-500 text-center mt-4">{error}</p>}
+        
+        {file && (
+          <button
+            onClick={handleAnalyzeClick}
+            disabled={isLoading || !file}
+            className="w-full mt-6 bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-all duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
+          >
+            {isLoading ? 'Analyzing...' : 'Analyze Leaf'}
+          </button>
         )}
       </div>
-      
-       <button
-          onClick={triggerCamera}
-          className="w-full mt-4 flex items-center justify-center bg-green-100 text-green-800 font-semibold py-3 px-4 rounded-lg hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-        >
-          <CameraIcon />
-          Use Camera / Webcam
-        </button>
-
-      {error && <p className="text-red-500 text-center mt-4">{error}</p>}
-      
-      {file && (
-        <button
-          onClick={handleAnalyzeClick}
-          disabled={isLoading || !file}
-          className="w-full mt-6 bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-all duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
-        >
-          {isLoading ? 'Analyzing...' : 'Analyze Leaf'}
-        </button>
-      )}
-    </div>
+      <HistoryList history={history} onClearHistory={onClearHistory} />
+    </>
   );
 };

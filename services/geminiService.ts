@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from '@google/genai';
 import type { AnalysisResult } from '../types';
 
@@ -28,7 +27,12 @@ export const analyzeLeaf = async (imageFile: File, language: string): Promise<An
 
   const imagePart = await fileToGenerativePart(imageFile);
   
-  const prompt = `Analyze this plant leaf image. Provide the analysis in ${language}. Follow the JSON schema precisely. If the leaf is healthy, diseaseName should be "N/A" and riskLevel should be low. If diseased, identify the disease, provide a risk level from 0-100, and give simple, actionable treatment advice suitable for a farmer. The advice should be a list of short, clear steps.`;
+  const prompt = `Analyze this plant leaf image. Provide the analysis in ${language}. Follow the JSON schema precisely. 
+  - If the leaf is healthy: diseaseName should be "N/A", riskLevel low, accuracy high, and treatment/pesticide arrays should be empty.
+  - If diseased: identify the disease, provide a risk level from 0-100, give simple, actionable treatment advice, and suggest preventative pesticides.
+  - Provide an accuracy score (0-100) for your diagnosis confidence.
+  - The treatment advice should be a list of short, clear steps for a farmer.
+  - The pesticide suggestions should be a list of common pesticide names or types.`;
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
@@ -57,8 +61,19 @@ export const analyzeLeaf = async (imageFile: File, language: string): Promise<An
             },
             description: "A list of simple, farmer-friendly treatment steps. Should be an empty array if healthy.",
           },
+          accuracy: {
+            type: Type.NUMBER,
+            description: "A confidence score from 0 to 100 for the diagnosis.",
+          },
+          pesticideSuggestions: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.STRING
+            },
+            description: "A list of suggested pesticides for prevention. Should be an empty array if healthy.",
+          }
         },
-        required: ['isHealthy', 'diseaseName', 'riskLevel', 'treatmentAdvice'],
+        required: ['isHealthy', 'diseaseName', 'riskLevel', 'treatmentAdvice', 'accuracy', 'pesticideSuggestions'],
       },
     },
   });

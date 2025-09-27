@@ -1,10 +1,9 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { HomePage } from './components/HomePage';
 import { ResultPage } from './components/ResultPage';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { analyzeLeaf } from './services/geminiService';
-import type { AnalysisResult, AppState } from './types';
+import type { AnalysisResult, AppState, HistoryEntry } from './types';
 import { LANGUAGES } from './constants';
 import type { Language } from './types';
 
@@ -13,8 +12,21 @@ const App: React.FC = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(LANGUAGES[0]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
-  const handleAnalysis = useCallback(async (imageFile: File) => {
+  useEffect(() => {
+    try {
+      const storedHistory = localStorage.getItem('agriSentryHistory');
+      if (storedHistory) {
+        setHistory(JSON.parse(storedHistory));
+      }
+    } catch (e) {
+      console.error("Failed to parse history from localStorage", e);
+      localStorage.removeItem('agriSentryHistory');
+    }
+  }, []);
+
+  const handleAnalysis = useCallback(async (imageFile: File, imageDataUrl: string) => {
     setAppState('ANALYZING');
     setError(null);
     setAnalysisResult(null);
@@ -23,6 +35,20 @@ const App: React.FC = () => {
       const result = await analyzeLeaf(imageFile, selectedLanguage.name);
       setAnalysisResult(result);
       setAppState('RESULT');
+
+      const newEntry: HistoryEntry = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        imageDataUrl,
+        result,
+      };
+
+      setHistory(prevHistory => {
+        const updatedHistory = [newEntry, ...prevHistory];
+        localStorage.setItem('agriSentryHistory', JSON.stringify(updatedHistory));
+        return updatedHistory;
+      });
+
     } catch (err) {
       console.error(err);
       setError('Failed to analyze the image. Please try again.');
@@ -36,6 +62,11 @@ const App: React.FC = () => {
     setError(null);
   };
 
+  const handleClearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('agriSentryHistory');
+  };
+
   const renderContent = () => {
     switch (appState) {
       case 'ANALYZING':
@@ -44,13 +75,14 @@ const App: React.FC = () => {
         return analysisResult ? (
           <ResultPage result={analysisResult} onReset={handleReset} />
         ) : (
-          // Fallback in case result is null
           <HomePage 
             onAnalyze={handleAnalysis} 
             isLoading={false} 
             error={error} 
             selectedLanguage={selectedLanguage}
             setSelectedLanguage={setSelectedLanguage}
+            history={history}
+            onClearHistory={handleClearHistory}
           />
         );
       case 'IDLE':
@@ -58,11 +90,12 @@ const App: React.FC = () => {
         return (
           <HomePage 
             onAnalyze={handleAnalysis} 
-            // Fix: Corrected the `isLoading` prop. When `appState` is 'IDLE', `isLoading` should be `false`. The previous comparison `appState === 'ANALYZING'` was always false within this `case` block, leading to a TypeScript error.
             isLoading={false} 
             error={error}
             selectedLanguage={selectedLanguage}
             setSelectedLanguage={setSelectedLanguage}
+            history={history}
+            onClearHistory={handleClearHistory}
           />
         );
     }
