@@ -1,0 +1,7 @@
+{
+  "name": "AgriSentry: Plant Disease Detector",
+  "description": "An AI-powered application for farmers to detect plant leaf diseases by uploading or capturing an image. The app identifies diseases, provides a risk assessment, and offers simple, multilingual treatment advice.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
